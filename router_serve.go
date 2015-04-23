@@ -106,7 +106,7 @@ func middlewareStack(closure *middlewareClosure) NextMiddlewareFunc {
 				middleware = closure.Routers[closure.currentRouterIndex].middleware[closure.currentMiddlewareIndex]
 			} else {
 				// We're done! invoke the action
-				handler := req.route.Handler
+				handler := req.route.handler
 				if handler.Generic {
 					handler.GenericHandler(rw, req)
 				} else {
@@ -143,7 +143,7 @@ func (mw *middlewareHandler) invoke(ctx reflect.Value, rw ResponseWriter, req *R
 // 	}
 // }
 
-func calculateRoute(rootRouter *Router, req *Request) (*route, map[string]string) {
+func calculateRoute(rootRouter *Router, req *Request) (*Route, map[string]string) {
 	var leaf *pathLeaf
 	var wildcardMap map[string]string
 	method := httpMethod(req.Method)
@@ -169,9 +169,9 @@ func calculateRoute(rootRouter *Router, req *Request) (*route, map[string]string
 
 // given the route (and target router), return [root router, child router, ..., leaf route's router]
 // Use the memory in routers to store this information
-func routersFor(route *route, routers []*Router) []*Router {
+func routersFor(route *Route, routers []*Router) []*Router {
 	routers = routers[:0]
-	curRouter := route.Router
+	curRouter := route.router
 	for curRouter != nil {
 		routers = append(routers, curRouter)
 		curRouter = curRouter.parent
@@ -223,7 +223,7 @@ func (rootRouter *Router) handlePanic(rw *appResponseWriter, req *Request, err i
 		targetRouter = rootRouter
 		context = req.rootContext
 	} else {
-		targetRouter = req.route.Router
+		targetRouter = req.route.router
 		context = req.targetContext
 
 		for !targetRouter.errorHandler.IsValid() && targetRouter.parent != nil {

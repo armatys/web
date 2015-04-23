@@ -8,13 +8,13 @@ import (
 type httpMethod string
 
 const (
-	httpMethodGet    = httpMethod("GET")
-	httpMethodPost   = httpMethod("POST")
-	httpMethodPut    = httpMethod("PUT")
-	httpMethodDelete = httpMethod("DELETE")
-	httpMethodPatch  = httpMethod("PATCH")
-	httpMethodHead   = httpMethod("HEAD")
-	httpMethodOptions   = httpMethod("OPTIONS")
+	httpMethodGet     = httpMethod("GET")
+	httpMethodPost    = httpMethod("POST")
+	httpMethodPut     = httpMethod("PUT")
+	httpMethodDelete  = httpMethod("DELETE")
+	httpMethodPatch   = httpMethod("PATCH")
+	httpMethodHead    = httpMethod("HEAD")
+	httpMethodOptions = httpMethod("OPTIONS")
 )
 
 var httpMethods = []httpMethod{httpMethodGet, httpMethodPost, httpMethodPut, httpMethodDelete, httpMethodPatch, httpMethodHead, httpMethodOptions}
@@ -34,7 +34,7 @@ type Router struct {
 
 	// Routeset contents:
 	middleware []*middlewareHandler
-	routes     []*route
+	routes     []*Route
 
 	// The root pathnode is the same for a tree of Routers
 	root map[httpMethod]*pathNode
@@ -61,11 +61,17 @@ type GenericMiddleware func(ResponseWriter, *Request, NextMiddlewareFunc)
 // you can use this signature to get a small performance boost.
 type GenericHandler func(ResponseWriter, *Request)
 
-type route struct {
-	Router  *Router
-	Method  httpMethod
-	Path    string
-	Handler *actionHandler
+type Route struct {
+	router  *Router
+	method  httpMethod
+	path    string
+	handler *actionHandler
+	Name    string
+}
+
+func (r *Route) Named(n string) *Route {
+	r.Name = n
+	return r
 }
 
 type middlewareHandler struct {
@@ -169,53 +175,53 @@ func (r *Router) NotFound(fn interface{}) *Router {
 }
 
 // Get will add a route to the router that matches on GET requests and the specified path.
-func (r *Router) Get(path string, fn interface{}) *Router {
+func (r *Router) Get(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodGet, path, fn)
 }
 
 // Post will add a route to the router that matches on POST requests and the specified path.
-func (r *Router) Post(path string, fn interface{}) *Router {
+func (r *Router) Post(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodPost, path, fn)
 }
 
 // Put will add a route to the router that matches on PUT requests and the specified path.
-func (r *Router) Put(path string, fn interface{}) *Router {
+func (r *Router) Put(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodPut, path, fn)
 }
 
 // Delete will add a route to the router that matches on DELETE requests and the specified path.
-func (r *Router) Delete(path string, fn interface{}) *Router {
+func (r *Router) Delete(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodDelete, path, fn)
 }
 
 // Patch will add a route to the router that matches on PATCH requests and the specified path.
-func (r *Router) Patch(path string, fn interface{}) *Router {
+func (r *Router) Patch(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodPatch, path, fn)
 }
 
 // Head will add a route to the router that matches on HEAD requests and the specified path.
-func (r *Router) Head(path string, fn interface{}) *Router {
+func (r *Router) Head(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodHead, path, fn)
 }
 
 // Options will add a route to the router that matches on OPTIONS requests and the specified path.
-func (r *Router) Options(path string, fn interface{}) *Router {
+func (r *Router) Options(path string, fn interface{}) *Route {
 	return r.addRoute(httpMethodOptions, path, fn)
 }
 
-func (r *Router) addRoute(method httpMethod, path string, fn interface{}) *Router {
+func (r *Router) addRoute(method httpMethod, path string, fn interface{}) *Route {
 	vfn := reflect.ValueOf(fn)
 	validateHandler(vfn, r.contextType)
 	fullPath := appendPath(r.pathPrefix, path)
-	route := &route{Method: method, Path: fullPath, Router: r}
+	route := &Route{method: method, path: fullPath, router: r}
 	if vfn.Type().NumIn() == 2 {
-		route.Handler = &actionHandler{Generic: true, GenericHandler: fn.(func(ResponseWriter, *Request))}
+		route.handler = &actionHandler{Generic: true, GenericHandler: fn.(func(ResponseWriter, *Request))}
 	} else {
-		route.Handler = &actionHandler{Generic: false, DynamicHandler: vfn}
+		route.handler = &actionHandler{Generic: false, DynamicHandler: vfn}
 	}
 	r.routes = append(r.routes, route)
 	r.root[method].add(fullPath, route)
-	return r
+	return route
 }
 
 // Calculates the max child depth of the node. Leaves return 1. For Parent->Child, Parent is 2.
