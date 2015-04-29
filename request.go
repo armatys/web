@@ -38,6 +38,14 @@ func (r *Request) RoutePath() string {
 	return ""
 }
 
+func (r *Request) MustUrlFor(routeName string, pathParams ...string) string {
+	url, err := r.MappedUrlFor(routeName, nil, pathParams...)
+	if err != nil {
+		panic(err)
+	}
+	return url
+}
+
 func (r *Request) UrlFor(routeName string, pathParams ...string) (string, error) {
 	return r.MappedUrlFor(routeName, nil, pathParams...)
 }
